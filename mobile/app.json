@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "Mis gastos",
+    "slug": "mis-gastos",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": { "supportsTablet": false, "bundleIdentifier": "com.pallas1997.misgastos" },
+    "android": { "package": "com.pallas1997.misgastos" }
+  }
+}
