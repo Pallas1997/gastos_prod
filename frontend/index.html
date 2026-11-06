@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gastos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Mis gastos</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<button class="tg" id="tg" onclick="toggleTheme()" aria-label="Cambiar tema"></button>
+<button class="pf" id="pf" onclick="togglePM()"></button>
+<div class="pm" id="pm"></div>
+<div class="dg" id="dg"></div>
+<main id="m"></main>
+<nav>
+<button id="t-home" onclick="go('home')"><b>◔</b>Inicio</button>
+<button id="t-inc" onclick="go('inc')"><b>💰</b>Ingresos</button>
+<button class="add" onclick="openSheet()" aria-label="Cargar gasto">+</button>
+<button id="t-list" onclick="go('list')"><b>☰</b>Gastos</button>
+<button id="t-fix" onclick="go('fix')"><b>📌</b>Servicios</button>
+<button id="t-sup" onclick="go('sup')"><b>🛒</b>Supermercado</button>
+</nav>
+<div id="sh" onclick="if(event.target===this)closeSheet()">
+<div class="sheet">
+<div class="chips" id="cc" style="margin:0 0 10px"></div>
+<input id="a" class="amt money" type="text" inputmode="decimal" placeholder="$ 0" autocomplete="off" oninput="prevU()">
+<div class="sm" id="cv" style="margin-top:6px"></div>
+<div class="chips" id="ch"></div>
+<input id="n" placeholder="¿Qué fue este gasto? (opcional)">
+<div class="chips" id="pc" style="margin:4px 0 8px"></div>
+<label class="chk"><input type="checkbox" id="h"> Es un gasto hormiga (chico y repetido)</label>
+<input id="d" type="date">
+<button class="btn" onclick="saveExp()">Guardar gasto</button>
+</div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+<script src="js/sync.js"></script>
+</body>
+</html>
