@@ -1,6 +1,6 @@
 // Componentes visuales compartidos y colores (mismos que la web)
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { maskStr, parseMoney, mv } from './lib/format';
 
 export const LIGHT = { bg: '#f2f5f3', card: '#fff', ink: '#14201c', mute: '#667570', line: '#dfe6e2', ok: '#0f8f6b', warn: '#d98a00', bad: '#d64545', ant: '#6b4fd8', ring: '#e3eae6', dark: false };
@@ -129,4 +129,3 @@ export function DialogHost() {
   );
 }
 
-export const st = StyleSheet.create({ hero: { alignItems: 'center', paddingVertical: 22 } });

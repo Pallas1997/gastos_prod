@@ -7,14 +7,14 @@ const API = (API_URL || '').replace(/\/$/, '');
 const K = { tok: 'gastos-token', mail: 'gastos-email', at: 'gastos-sync-at' };
 
 export const acct = { tok: null, mail: null, at: null, status: '', busy: false };
-let timer = null;
+let pushTimer = null;
 
 export async function initSync() {
   try {
     const v = await AsyncStorage.multiGet([K.tok, K.mail, K.at]);
     acct.tok = v[0][1]; acct.mail = v[1][1]; acct.at = v[2][1];
   } catch (e) {}
-  hooks.onSaved = () => { if (!acct.tok) return; clearTimeout(timer); timer = setTimeout(push, 2000); };
+  hooks.onSaved = () => { if (!acct.tok) return; clearTimeout(pushTimer); pushTimer = setTimeout(push, 2000); };
   refresh();
 }
 
