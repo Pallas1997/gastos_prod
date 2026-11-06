@@ -1,16 +1,19 @@
 // Exportar a Excel/CSV, guardar y cargar copias de seguridad
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import * as XLSX from 'xlsx';
 import { st, cat$, snapshot, applySnapshot, DEFS, save, refresh } from './store';
 import { fd, today } from './format';
 
-async function share(name, data, base64, mime) {
-  const uri = FileSystem.cacheDirectory + name;
-  await FileSystem.writeAsStringAsync(uri, data, { encoding: base64 ? FileSystem.EncodingType.Base64 : FileSystem.EncodingType.UTF8 });
+// data: texto o Uint8Array
+async function share(name, data, mime) {
+  const f = new File(Paths.cache, name);
+  if (f.exists) f.delete();
+  f.create();
+  f.write(data);
   if (!(await Sharing.isAvailableAsync())) throw new Error('Compartir no está disponible en este dispositivo');
-  await Sharing.shareAsync(uri, { mimeType: mime, dialogTitle: name });
+  await Sharing.shareAsync(f.uri, { mimeType: mime, dialogTitle: name });
 }
 
 function rows() {
@@ -29,8 +32,8 @@ export async function exportXlsx() {
   add(i, 'Ingresos', { Fecha: '', Concepto: '', Monto: '' });
   add(f, 'Servicios', { Servicio: '', 'Día de vencimiento': '', Comentario: '', Monto: '' });
   add(sl, 'Sueldos', { Mes: '', Sueldo: '' });
-  const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
-  await share('mis-gastos-' + today() + '.xlsx', b64, true, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const buf = new Uint8Array(XLSX.write(wb, { bookType: 'xlsx', type: 'array' }));
+  await share('mis-gastos-' + today() + '.xlsx', buf, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 }
 
 export async function exportCsv() {
@@ -41,12 +44,12 @@ export async function exportCsv() {
   g.forEach(r => L.push(['Gasto', r.Fecha, r.Categoría, r.Comentario, r.Pago, r.Hormiga, r['A revisar'], n(r.Monto)]));
   i.forEach(r => L.push(['Ingreso', r.Fecha, r.Concepto, '', '', '', '', n(r.Monto)]));
   f.forEach(r => L.push(['Fijo mensual', '', r.Servicio, r.Comentario, '', '', '', n(r.Monto)]));
-  await share('mis-gastos-' + today() + '.csv', '﻿' + L.map(r => r.map(q).join(';')).join('\r\n'), false, 'text/csv');
+  await share('mis-gastos-' + today() + '.csv', '﻿' + L.map(r => r.map(q).join(';')).join('\r\n'), 'text/csv');
 }
 
 export async function exportBackup() {
   const s = snapshot();
-  await share('mis-gastos-copia-' + today() + '.json', JSON.stringify({ app: 'mis-gastos', v: 2, fecha: today(), meta: { cur: s.meta.cur, list: s.meta.list }, profiles: s.profiles }, null, 1), false, 'application/json');
+  await share('mis-gastos-copia-' + today() + '.json', JSON.stringify({ app: 'mis-gastos', v: 2, fecha: today(), meta: { cur: s.meta.cur, list: s.meta.list }, profiles: s.profiles }, null, 1), 'application/json');
 }
 
 // confirm(msg) -> Promise<boolean>. Devuelve un texto con el resultado, o null si se canceló.
@@ -54,7 +57,7 @@ export async function importBackup(confirm) {
   const res = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
   if (res.canceled || !res.assets || !res.assets[0]) return null;
   let j;
-  try { j = JSON.parse(await FileSystem.readAsStringAsync(res.assets[0].uri)); } catch (e) { throw new Error('Tiene que ser una copia guardada desde esta app (.json).'); }
+  try { j = JSON.parse(await new File(res.assets[0].uri).text()); } catch (e) { throw new Error('Tiene que ser una copia guardada desde esta app (.json).'); }
   if (j && j.v === 2 && j.profiles && j.meta && Array.isArray(j.meta.list) && j.meta.list.length) {
     if (!(await confirm('Esto reemplaza TODOS los perfiles de este dispositivo por los de la copia (' + j.meta.list.map(p => p.name).join(', ') + ').'))) return null;
     await applySnapshot({ meta: j.meta, profiles: j.profiles }, true);
