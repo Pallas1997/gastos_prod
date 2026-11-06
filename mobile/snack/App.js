@@ -1,10 +1,6 @@
 // Mis gastos — versión de un solo archivo para Expo Snack (generada desde mobile/)
 import React, { createContext, useContext, useEffect, useReducer, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import * as DocumentPicker from 'expo-document-picker';
-import * as XLSX from 'xlsx';
 import { ActivityIndicator, Animated, AppState, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Switch, Text, TextInput, View, useColorScheme } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, Rect } from 'react-native-svg';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -320,14 +316,16 @@ async function logout(expired) {
 
 // ===== src/lib/files.js
 // Exportar a Excel/CSV, guardar y cargar copias de seguridad
-
-
-
-
+// Los módulos de archivos se cargan recién cuando se usan (así la vista previa web de Snack no falla)
+const FS = () => require('expo-file-system');
+const Sharing = { isAvailableAsync: (...a) => require('expo-sharing').isAvailableAsync(...a), shareAsync: (...a) => require('expo-sharing').shareAsync(...a) };
+const pickDoc = o => require('expo-document-picker').getDocumentAsync(o);
+const XL = () => require('xlsx');
 
 
 // data: texto o Uint8Array
 async function share(name, data, mime) {
+  const { File, Paths } = FS();
   const f = new File(Paths.cache, name);
   if (f.exists) f.delete();
   f.create();
@@ -346,6 +344,7 @@ function rows() {
 }
 
 async function exportXlsx() {
+  const XLSX = XL();
   const { g, i, f, sl } = rows(), wb = XLSX.utils.book_new();
   const add = (r, n, h) => XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(r.length ? r : [h]), n);
   add(g, 'Gastos', { Fecha: '', Categoría: '', Comentario: '', Pago: '', Hormiga: '', 'A revisar': '', Monto: '' });
@@ -374,10 +373,10 @@ async function exportBackup() {
 
 // confirm(msg) -> Promise<boolean>. Devuelve un texto con el resultado, o null si se canceló.
 async function importBackup(confirm) {
-  const res = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
+  const res = await pickDoc({ type: ['application/json', 'text/plain', '*/*'], copyToCacheDirectory: true });
   if (res.canceled || !res.assets || !res.assets[0]) return null;
   let j;
-  try { j = JSON.parse(await new File(res.assets[0].uri).text()); } catch (e) { throw new Error('Tiene que ser una copia guardada desde esta app (.json).'); }
+  try { j = JSON.parse(await new (FS().File)(res.assets[0].uri).text()); } catch (e) { throw new Error('Tiene que ser una copia guardada desde esta app (.json).'); }
   if (j && j.v === 2 && j.profiles && j.meta && Array.isArray(j.meta.list) && j.meta.list.length) {
     if (!(await confirm('Esto reemplaza TODOS los perfiles de este dispositivo por los de la copia (' + j.meta.list.map(p => p.name).join(', ') + ').'))) return null;
     await applySnapshot({ meta: j.meta, profiles: j.profiles }, true);
