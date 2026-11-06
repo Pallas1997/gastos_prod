@@ -1,4 +1,4 @@
-const CATS=[{id:'cafe',n:'Café',e:'☕',h:1},{id:'kiosco',n:'Kiosco',e:'🍫',h:1},{id:'delivery',n:'Delivery',e:'🛵',h:1},{id:'subs',n:'Suscripciones',e:'📺',h:1},{id:'salidas',n:'Salidas',e:'🍻',h:1},{id:'super',n:'Súper',e:'🛒',h:0},{id:'transp',n:'Transporte',e:'🚌',h:0},{id:'hogar',n:'Hogar',e:'🏠',h:0},{id:'servicios',n:'Servicios',e:'💡',h:0},{id:'salud',n:'Salud',e:'💊',h:0},{id:'ropa',n:'Ropa',e:'👕',h:0},{id:'ocio',n:'Ocio',e:'🎮',h:0},{id:'otros',n:'Otros',e:'📦',h:0}];
+const CATS=[{id:'cafe',n:'Café',e:'☕',h:1},{id:'kiosco',n:'Kiosco',e:'🍫',h:1},{id:'delivery',n:'Delivery',e:'🛵',h:1},{id:'subs',n:'Suscripciones',e:'📺',h:1},{id:'salidas',n:'Salidas',e:'🍻',h:1},{id:'comida',n:'Comida',e:'🍔',h:0},{id:'super',n:'Súper',e:'🛒',h:0},{id:'transp',n:'Transporte',e:'🚌',h:0},{id:'hogar',n:'Hogar',e:'🏠',h:0},{id:'servicios',n:'Servicios',e:'💡',h:0},{id:'salud',n:'Salud',e:'💊',h:0},{id:'ropa',n:'Ropa',e:'👕',h:0},{id:'ocio',n:'Ocio',e:'🎮',h:0},{id:'otros',n:'Otros',e:'📦',h:0}];
 const $=s=>document.querySelector(s);
 const fmtN=n=>{n=+n||0;const [i,d]=Math.abs(n).toFixed(2).split('.');return (n<0?'-':'')+i.replace(/\B(?=(\d{3})+(?!\d))/g,'.')+','+d};
 const fmt=n=>'$'+fmtN(n);
