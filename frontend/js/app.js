@@ -281,13 +281,24 @@ async function shopClearDone(){keep(()=>{S.shop=shopS().filter(i=>!i.done)})}
 async function shopClear(){if(!shopS().length)return;if(await dlg({title:'¿Borrar toda la lista?',ok:'Borrar'}))keep(()=>{S.shop=[]})}
 let rec=null,recOn=false,recTxt='';
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let recDone=false;
+function shopFinish(){
+  if(recDone)return;recDone=true;recOn=false;micUI();
+  const el=$('#st'),t=(el&&el.value)||recTxt;
+  if(t.trim()&&shopAdd(t)){const e=$('#st');if(e)e.value=''}
+}
 function shopMic(){
   if(!SR){dlg({title:'Dictado no disponible acá',msg:'Usá el micrófono del teclado: tocá el cuadro de texto, después el 🎤 del teclado, decí la lista y tocá "Agregar a la lista".',cancel:false});return}
-  if(recOn){rec&&rec.stop();return}
-  rec=new SR();rec.lang='es-AR';rec.interimResults=true;rec.continuous=true;recTxt='';
-  rec.onresult=e=>{let fin='',tmp='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+', ';else tmp+=t}recTxt=fin;const el=$('#st');if(el)el.value=(fin+tmp).trim()};
-  rec.onerror=e=>{recOn=false;micUI();if(e.error==='not-allowed'||e.error==='service-not-allowed')dlg({title:'Sin permiso para el micrófono',msg:'Activá el micrófono para esta página en los ajustes del navegador, o usá el 🎤 del teclado.',cancel:false})};
-  rec.onend=()=>{recOn=false;micUI();const el=$('#st');const t=(el&&el.value)||recTxt;if(t.trim()){if(shopAdd(t)&&$('#st'))$('#st').value=''}};
+  if(recOn){
+    // Cortamos sí o sí: algunos iPhone no responden a stop(), así que también abortamos y agregamos lo escuchado
+    const r=rec;try{r&&r.stop()}catch(e){}
+    setTimeout(()=>{try{r&&r.abort()}catch(e){}shopFinish()},700);
+    recOn=false;micUI();return;
+  }
+  rec=new SR();rec.lang='es-AR';rec.interimResults=true;rec.continuous=true;recTxt='';recDone=false;
+  rec.onresult=e=>{let fin='',tmp='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+', ';else tmp+=t}recTxt=(fin+tmp).trim();const el=$('#st');if(el)el.value=recTxt};
+  rec.onerror=e=>{if(e.error==='not-allowed'||e.error==='service-not-allowed'){recDone=true;recOn=false;micUI();dlg({title:'Sin permiso para el micrófono',msg:'Activá el micrófono para esta página en los ajustes del navegador, o usá el 🎤 del teclado.',cancel:false})}};
+  rec.onend=()=>shopFinish();
   try{rec.start();recOn=true;micUI()}catch(e){recOn=false;micUI()}
 }
 function micUI(){const b=$('#mic');if(!b)return;b.textContent=recOn?'⏹ Terminar y agregar':'🎤 Grabar lista';b.classList.toggle('rec',recOn);const h=$('#mich');if(h)h.textContent=recOn?'Escuchando… decí los productos con su cantidad. Tocá "Terminar" cuando acabes.':'Ej: "dos leches, un kilo de papas, media docena de huevos y pan"'}
