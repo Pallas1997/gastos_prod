@@ -243,12 +243,21 @@ function cartCard(){
 // ---------- Lista de compras por voz
 const NUMS={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,veinte:20,treinta:30,cuarenta:40,cincuenta:50,cien:100,medio:0.5,media:0.5};
 const UNITS='kilos?|kg|kgs|gramos?|grs?|g|litros?|lts?|l|paquetes?|cajas?|latas?|botellas?|bolsas?|sachets?|docenas?|unidades?|potes?|frascos?|rollos?|packs?|maples?|bandejas?|atados?|planchas?|hormas?|cuartos?';
-const FILL=/^(y|e|tambi[eé]n|adem[aá]s|necesito|necesitamos|hay que comprar|comprar|compr[aá]|traer|tra[eé]|agreg[aá]|agregar|anot[aá]|sum[aá]|quiero|falta|faltan|me falta|nos falta|nos faltan|me faltan|algo de|un poco de)\s+/i;
+// Frases de relleno que se sacan para quedarse solo con el producto
+const FILL=/^(y|e|o|tambi[eé]n|adem[aá]s|despu[eé]s|ahora|bueno|bue|eh+|em+|mm+|este|che|ah+|a ver|dale|ok|okey|listo|entonces|ya|yo|nosotros|ac[aá]|hoy|ma[nñ]ana|por favor|porfa|creo que|me parece que|capaz|quiz[aá]s|tal vez|(?:me |nos )?(?:olvid[eé]|olvidamos)(?: de)?(?: comprar| traer)?|acordate(?: de)?(?: comprar| traer)?|no te olvides(?: de)?(?: comprar| traer)?|(?:yo |nosotros )?(?:necesito|necesitamos|necesitar[ií]a|quiero|queremos|precis[oa]|tengo que|tenemos que|hay que|habr[ií]a que|voy a|vamos a|deber[ií]a|deber[ií]amos)(?: comprar| traer| llevar| conseguir| sumar| agregar)?|compr[aá]|comprar|tra[eé]|traer|llev[aá]|llevar|agreg[aá]|agregar|anot[aá]|anotar|pon[eé]|poner|sum[aá]|sumar|(?:me |nos )?falta(?:n)?|(?:se )?(?:termin[oó]|terminaron|acab[oó]|acabaron)(?: el| la| los| las)?|no (?:hay|queda|quedan|tenemos|tengo)(?: m[aá]s)?|otra cosa|lo otro|algo de|un poco de|unos|unas|la lista|para la lista|en la lista|a la lista)\s+/i;
+const JUNK=/^(nada|nada m[aá]s|eso|eso es todo|es todo|todo|listo|ya est[aá]|nada mas|cosas|algo|lo dem[aá]s|el resto|creo|no s[eé]|s[ií]|no|bueno|dale|gracias|chau)$/i;
+// Lo que va después del producto y no hace falta ("para la cena", "porque se terminó", "si hay"...)
+const TAIL=/\s+(para|porque|que|si|cuando|por las dudas|por si|as[ií]|tambi[eé]n|creo|me parece|o algo|o lo que|o sea|ponele|por ejemplo|de la marca|si hay|si encontr[aá]s|del s[uú]per|en el s[uú]per|en oferta|bien|nom[aá]s|y eso)\b.*$/i;
+function cleanChunk(s){
+  s=s.replace(/[¿?¡!"“”]/g,'').trim();
+  let k=0,prev;s+=' ';do{prev=s;s=s.replace(FILL,'')}while(s!==prev&&k++<8);s=s.trim();
+  return s;
+}
 function parseShop(txt){
   const out=[];
-  String(txt||'').toLowerCase().replace(/\s+/g,' ').replace(/\s+y\s+(medio|media)\b/g,' ymedio').split(/[,;.\n]|\s+y\s+|\s+e\s+|\s+más\s+|\s+mas\s+|\s+después\s+/).forEach(raw=>{
-    let s=raw.trim();let k=0;while(FILL.test(s)&&k++<4)s=s.replace(FILL,'').trim();
-    if(!s)return;
+  String(txt||'').toLowerCase().replace(/\s+/g,' ').replace(/\s+y\s+(medio|media)\b/g,' ymedio').replace(/\b(queda|quedan|hay|tenemos|tengo)\s+m[aá]s\b/g,'$1').split(/[,;.\n]|\s+y\s+|\s+e\s+|\s+más\s+|\s+mas\s+|\s+después\s+|\s+despues\s+|\s+tambi[eé]n\s+|\s+adem[aá]s\s+|\s+otra cosa\s+|\s+y despu[eé]s\s+/).forEach(raw=>{
+    let s=cleanChunk(raw);
+    if(!s||JUNK.test(s))return;
     let q='',m;
     if(m=s.match(/^media docena( de)?\s*/)){q='6';s=s.slice(m[0].length)}
     else if(m=s.match(/^una docena( de)?\s*/)){q='12';s=s.slice(m[0].length)}
@@ -258,8 +267,9 @@ function parseShop(txt){
       q=String(n+half).replace('.',',')+(u?' '+u:'');s=s.slice(m[0].length);
       if(!u&&/^(de)\s+/.test(s))s=s.replace(/^de\s+/,'');
     }
-    s=s.replace(/^(el|la|los|las|de|del)\s+/,'').replace(/\s+(por favor|porfa)$/,'').trim();
-    if(!s||s.length<2)return;
+    s=cleanChunk(s).replace(TAIL,'').replace(/^(el|la|los|las|de|del|un|una)\s+/,'').trim();
+    if(!s||s.length<2||JUNK.test(s))return;
+    if(s.split(' ').length>5)s=s.split(' ').slice(0,5).join(' ');
     out.push({n:s.charAt(0).toUpperCase()+s.slice(1),q:q||'1'});
   });
   return out;
