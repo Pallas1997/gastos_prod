@@ -240,11 +240,74 @@ function cartCard(){
   <div class="row" style="margin-top:12px;gap:8px"><button class="btn s" style="flex:1;background:var(--ok);color:#fff" onclick="cartDone()">✓ Terminar compra</button><button class="btn s" style="background:var(--bg);color:var(--ink);border:1px solid var(--line)" onclick="cartClear()">Vaciar</button></div>`:''}
   </div>`;
 }
+// ---------- Lista de compras por voz
+const NUMS={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,veinte:20,treinta:30,cuarenta:40,cincuenta:50,cien:100,medio:0.5,media:0.5};
+const UNITS='kilos?|kg|kgs|gramos?|grs?|g|litros?|lts?|l|paquetes?|cajas?|latas?|botellas?|bolsas?|sachets?|docenas?|unidades?|potes?|frascos?|rollos?|packs?|maples?|bandejas?|atados?|planchas?|hormas?|cuartos?';
+const FILL=/^(y|e|tambi[eé]n|adem[aá]s|necesito|necesitamos|hay que comprar|comprar|compr[aá]|traer|tra[eé]|agreg[aá]|agregar|anot[aá]|sum[aá]|quiero|falta|faltan|me falta|nos falta|nos faltan|me faltan|algo de|un poco de)\s+/i;
+function parseShop(txt){
+  const out=[];
+  String(txt||'').toLowerCase().replace(/\s+/g,' ').replace(/\s+y\s+(medio|media)\b/g,' ymedio').split(/[,;.\n]|\s+y\s+|\s+e\s+|\s+más\s+|\s+mas\s+|\s+después\s+/).forEach(raw=>{
+    let s=raw.trim();let k=0;while(FILL.test(s)&&k++<4)s=s.replace(FILL,'').trim();
+    if(!s)return;
+    let q='',m;
+    if(m=s.match(/^media docena( de)?\s*/)){q='6';s=s.slice(m[0].length)}
+    else if(m=s.match(/^una docena( de)?\s*/)){q='12';s=s.slice(m[0].length)}
+    else if(m=s.match(new RegExp('^(\\d+(?:[.,]\\d+)?|'+Object.keys(NUMS).join('|')+')\\b\\s*(ymedio\\s*)?('+UNITS+')?\\b\\s*(ymedio\\s*)?(de\\s+)?'))){
+      const n=/\d/.test(m[1])?parseFloat(m[1].replace(',','.')):NUMS[m[1]];
+      const half=/ymedio/.test(m[0])?0.5:0,u=m[3]||'';
+      q=String(n+half).replace('.',',')+(u?' '+u:'');s=s.slice(m[0].length);
+      if(!u&&/^(de)\s+/.test(s))s=s.replace(/^de\s+/,'');
+    }
+    s=s.replace(/^(el|la|los|las|de|del)\s+/,'').replace(/\s+(por favor|porfa)$/,'').trim();
+    if(!s||s.length<2)return;
+    out.push({n:s.charAt(0).toUpperCase()+s.slice(1),q:q||'1'});
+  });
+  return out;
+}
+const shopS=()=>{if(!S.shop)S.shop=[];return S.shop};
+function shopAdd(txt){
+  const it=parseShop(txt);if(!it.length)return 0;
+  keep(()=>{const L=shopS();it.forEach(x=>{const e=L.find(y=>!y.done&&y.n.toLowerCase()===x.n.toLowerCase());if(e)e.q=x.q;else L.push({id:Date.now()+Math.random(),n:x.n,q:x.q,done:0})})});
+  return it.length;
+}
+function shopText(){const el=$('#st');if(!el||!el.value.trim())return;const n=shopAdd(el.value);if(n){const e=$('#st');if(e)e.value=''}else dlg({title:'No encontré productos',msg:'Probá separarlos con comas o con "y". Por ejemplo: "dos leches, un kilo de papas y pan".',cancel:false})}
+function shopTog(id){keep(()=>{const x=shopS().find(i=>i.id===id);if(x)x.done=x.done?0:1})}
+function shopDel(id){keep(()=>{S.shop=shopS().filter(i=>i.id!==id)})}
+async function shopEdit(id){const x=shopS().find(i=>i.id===id);if(!x)return;
+  const n=await dlg({title:'Producto',input:1,def:x.n,ok:'Siguiente'});if(n===null)return;
+  const q=await dlg({title:'Cantidad de '+(n.trim()||x.n),input:1,def:x.q,ok:'Guardar'});if(q===null)return;
+  keep(()=>{x.n=n.trim()||x.n;x.q=q.trim()||'1'})}
+async function shopClearDone(){keep(()=>{S.shop=shopS().filter(i=>!i.done)})}
+async function shopClear(){if(!shopS().length)return;if(await dlg({title:'¿Borrar toda la lista?',ok:'Borrar'}))keep(()=>{S.shop=[]})}
+let rec=null,recOn=false,recTxt='';
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+function shopMic(){
+  if(!SR){dlg({title:'Dictado no disponible acá',msg:'Usá el micrófono del teclado: tocá el cuadro de texto, después el 🎤 del teclado, decí la lista y tocá "Agregar a la lista".',cancel:false});return}
+  if(recOn){rec&&rec.stop();return}
+  rec=new SR();rec.lang='es-AR';rec.interimResults=true;rec.continuous=true;recTxt='';
+  rec.onresult=e=>{let fin='',tmp='';for(let i=0;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t+', ';else tmp+=t}recTxt=fin;const el=$('#st');if(el)el.value=(fin+tmp).trim()};
+  rec.onerror=e=>{recOn=false;micUI();if(e.error==='not-allowed'||e.error==='service-not-allowed')dlg({title:'Sin permiso para el micrófono',msg:'Activá el micrófono para esta página en los ajustes del navegador, o usá el 🎤 del teclado.',cancel:false})};
+  rec.onend=()=>{recOn=false;micUI();const el=$('#st');const t=(el&&el.value)||recTxt;if(t.trim()){if(shopAdd(t)&&$('#st'))$('#st').value=''}};
+  try{rec.start();recOn=true;micUI()}catch(e){recOn=false;micUI()}
+}
+function micUI(){const b=$('#mic');if(!b)return;b.textContent=recOn?'⏹ Terminar y agregar':'🎤 Grabar lista';b.classList.toggle('rec',recOn);const h=$('#mich');if(h)h.textContent=recOn?'Escuchando… decí los productos con su cantidad. Tocá "Terminar" cuando acabes.':'Ej: "dos leches, un kilo de papas, media docena de huevos y pan"'}
+function shopCard(){
+  const L=shopS(),pend=L.filter(i=>!i.done),done=L.filter(i=>i.done);
+  const row=i=>`<div class="ci${i.done?' dn':''}"><button class="ck${i.done?' on':''}" onclick="shopTog(${i.id})" aria-label="Tildar">${i.done?'✓':''}</button><div class="grow" onclick="shopEdit(${i.id})"><b>${esc(i.n)}</b></div><span class="qt">${esc(i.q)}</span><button class="x" onclick="shopDel(${i.id})" aria-label="Quitar">✕</button></div>`;
+  return `<div class="card"><div class="row" style="margin-bottom:8px"><b>📝 Lista de compras</b><span class="sm">${L.length?done.length+'/'+L.length+' listos':''}</span></div>
+  <button class="btn s" id="mic" style="width:100%;background:var(--ant);color:#fff" onclick="shopMic()">🎤 Grabar lista</button>
+  <div class="sm" id="mich" style="margin:8px 0">Ej: "dos leches, un kilo de papas, media docena de huevos y pan"</div>
+  <textarea id="st" rows="2" placeholder="O escribí / dictá con el 🎤 del teclado" style="resize:none"></textarea>
+  <button class="btn" style="margin-top:8px" onclick="shopText()">+ Agregar a la lista</button>
+  ${L.length?`<div style="margin-top:12px">${pend.map(row).join('')}${done.map(row).join('')}</div>
+  <div class="row" style="margin-top:12px;gap:8px">${done.length?`<button class="btn s" style="flex:1;background:var(--bg);color:var(--ink);border:1px solid var(--line)" onclick="shopClearDone()">Quitar tildados</button>`:''}<button class="btn s" style="${done.length?'':'flex:1;'}background:var(--bg);color:var(--ink);border:1px solid var(--line)" onclick="shopClear()">Borrar todo</button></div>`:''}
+  </div>`;
+}
 function superTab(){
   const ym=today().slice(0,7),t=new Date(),dim=new Date(t.getFullYear(),t.getMonth()+1,0).getDate(),day=t.getDate();
   const Bs=S.income[ym]||0,xi=sum(S.inc.filter(i=>i.date.startsWith(ym))),B=Bs+xi,fx=sum(S.fixed),ex=monthExp(),tot=sum(ex);
   const sp=ex.filter(e=>e.cat==='super'),ss=sum(sp),disp=B-tot-fx;
-  const head=`<h1>Supermercado</h1>`+cartCard();
+  const head=`<h1>Supermercado</h1>`+shopCard()+cartCard();
   const list=`<div class="card"><div class="row" style="margin-bottom:6px"><b>Compras del mes</b><button class="chip" onclick="openSuper()">+ Cargar compra</button></div>${sp.length?[...sp].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).map(e=>`<div class="item"><div class="em">🛒</div><div class="grow"><b>${fd(e.date)}</b><span>${e.note?esc(e.note):'Sin comentario'}${e.pay?' · '+(e.pay==='dig'?'💳 Digital':'💵 Efectivo'):''}</span></div><div class="val">${fmt(e.amt)}</div><button class="x" onclick="del(${e.id})" aria-label="Borrar">✕</button></div>`).join(''):'<div class="empty" style="padding:14px">Todavía no cargaste compras de súper este mes.</div>'}</div>`;
   if(!B)return head+`<div class="card empty">Cargá tu sueldo en Inicio (o un ingreso en Ingresos) para que te recomiende cuánto gastar en el súper.</div>`+list;
   const need=sum(ex.filter(e=>['transp','hogar','salud','servicios'].includes(e.cat))),

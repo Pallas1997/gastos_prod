@@ -73,3 +73,11 @@ input[type=range]{padding:0;accent-color:var(--ant)}
 .qb{width:30px;height:30px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:16px;padding:0}
 .q{min-width:22px;text-align:center;font-weight:700}
 .over{animation:pl 1s ease-in-out infinite}@keyframes pl{50%{opacity:.55}}
+
+.ck{width:26px;height:26px;border-radius:8px;border:2px solid var(--line);background:var(--bg);color:#fff;font-weight:700;font-size:15px;padding:0;flex:none}
+.ck.on{background:var(--ok);border-color:var(--ok)}
+.ci.dn b{text-decoration:line-through;color:var(--mute)}
+.ci .grow{cursor:pointer}
+.qt{font-weight:700;font-size:14px;white-space:nowrap}
+.ci.dn .qt{color:var(--mute)}
+#mic.rec{background:var(--bad)!important;animation:pl 1s ease-in-out infinite}
